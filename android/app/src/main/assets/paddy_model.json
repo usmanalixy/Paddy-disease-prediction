@@ -19,14 +19,17 @@
     0,
     255
   ],
-  "checkpoint_sha256": "638bf3083ac9f8607dd26e461e774ebbbf16451dc9fe874a8c65740a8359ce51",
-  "model_sha256": "1793566d61ca6def29579fd2b5b120b68983276d6dcdb68a53ac88d8404f95a5",
+  "checkpoint_sha256": "507111c563bdb254bbd9dab1d82c27c4cf65074f624faecf92270a057614242b",
+  "model_sha256": "8aa940b5c34f6f794bec73d295ce985a5950a6f72f5cc13ed0fbd2723bf2d3a5",
   "source_notebook": "model.ipynb",
   "training_phase": "fine_tune",
+  "dataset": "dasa7753912/new-paddy-doctor-paddy-disease-classification",
+  "dataset_filter": "train.csv original photos only",
+  "training_mode": "cached MobileNetV2 with training-only horizontal flips",
   "evaluation": {
     "source": "internal holdout",
-    "images": 99,
-    "accuracy": 0.6262626262626263,
-    "macro_f1": 0.6127782480677217
+    "images": 1034,
+    "accuracy": 0.9381044487427466,
+    "macro_f1": 0.9354903153086734
   }
 }
