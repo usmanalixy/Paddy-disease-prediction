@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Paddy Disease Prediction</string>
+    <string name="app_title">Check a paddy photo</string>
+    <string name="app_subtitle">Photograph an affected leaf or plant part in good light. Keep the symptoms in focus.</string>
+    <string name="photo_title">Paddy photo</string>
+    <string name="photo_empty">Your photo will appear here</string>
+    <string name="photo_preview">Selected paddy photo</string>
+    <string name="take_photo">Take photo</string>
+    <string name="choose_photo">Choose photo</string>
+    <string name="analyzing">Analyzing photo…</string>
+    <string name="results_title">Top predictions</string>
+    <string name="result_row">%1$s · %2$s</string>
+    <string name="scores_note">The scores show how the model ranked its classes. Confirm possible disease with a local crop adviser.</string>
+    <string name="offline">Photos are processed on this device.</string>
+    <plurals name="evaluation_summary">
+        <item quantity="one">Model evaluation: %1$s accuracy on %2$d image (%3$s). Accuracy on farm photos is unknown.</item>
+        <item quantity="other">Model evaluation: %1$s accuracy on %2$d images (%3$s). Accuracy on farm photos is unknown.</item>
+    </plurals>
+    <string name="evaluation_unknown">Accuracy on farm photos is unknown.</string>
+    <string name="evaluation_test_set">test set</string>
+    <string name="error_camera">The camera couldn’t open. Try choosing an existing photo.</string>
+    <string name="error_picker">The photo picker couldn’t open on this device.</string>
+    <string name="error_photo">This photo couldn’t be read. Try another JPEG or PNG.</string>
+    <string name="error_model">The classifier couldn’t run on this device.</string>
+</resources>

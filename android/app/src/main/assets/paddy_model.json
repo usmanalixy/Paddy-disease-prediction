@@ -1,0 +1,32 @@
+{
+  "class_names": [
+    "bacterial_leaf_blight",
+    "bacterial_leaf_streak",
+    "bacterial_panicle_blight",
+    "blast",
+    "brown_spot",
+    "dead_heart",
+    "downy_mildew",
+    "hispa",
+    "normal",
+    "tungro"
+  ],
+  "image_size": [
+    160,
+    160
+  ],
+  "pixel_range": [
+    0,
+    255
+  ],
+  "checkpoint_sha256": "638bf3083ac9f8607dd26e461e774ebbbf16451dc9fe874a8c65740a8359ce51",
+  "model_sha256": "1793566d61ca6def29579fd2b5b120b68983276d6dcdb68a53ac88d8404f95a5",
+  "source_notebook": "model.ipynb",
+  "training_phase": "fine_tune",
+  "evaluation": {
+    "source": "internal holdout",
+    "images": 99,
+    "accuracy": 0.6262626262626263,
+    "macro_f1": 0.6127782480677217
+  }
+}

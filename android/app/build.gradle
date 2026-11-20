@@ -1,0 +1,32 @@
+plugins {
+    id 'com.android.application' version '8.9.3'
+}
+
+android {
+    namespace 'com.usmanalixy.paddydiseaseprediction'
+    compileSdk 35
+    buildToolsVersion '35.0.0'
+
+    defaultConfig {
+        applicationId 'com.usmanalixy.paddydiseaseprediction'
+        minSdk 28
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    androidResources {
+        noCompress += 'tflite'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.15.0'
+    implementation 'com.google.ai.edge.litert:litert:1.4.1'
+    testImplementation 'junit:junit:4.13.2'
+}

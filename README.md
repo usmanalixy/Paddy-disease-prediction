@@ -2,6 +2,10 @@
 
 Train and evaluate a ten-class paddy leaf classifier in [model.ipynb](model.ipynb). The default workflow uses a pretrained MobileNetV2 backbone, fixed data splits, and a reproducible evaluation report.
 
+## Android app
+
+The [Android app](android/README.md) runs the notebook’s trained MobileNetV2 checkpoint on-device. Take a photo or choose one from the device to see the three highest-scoring classes. It supports Android 9 and later.
+
 ## Run the notebook
 
 1. Install Python 3.12 and the notebook dependencies in a virtual environment.
