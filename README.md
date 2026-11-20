@@ -1,57 +1,60 @@
 # Paddy Disease Prediction
 
-A TensorFlow/Keras image classifier for ten paddy leaf categories, including healthy leaves (`normal`). The project is a notebook. It covers image loading, class distribution, training, sample predictions, a classification report, and a confusion matrix.
-
-Start with [`standard_model_v3/model.ipynb`](../../blob/standard_model_v3/model.ipynb). The default `main` branch contains an earlier Colab experiment with hard-coded Google Drive paths, directory deletion commands, and evaluation cells that reference variables before they are assigned.
+Train and evaluate a ten-class paddy leaf classifier in [model.ipynb](model.ipynb). The default workflow uses a pretrained MobileNetV2 backbone, fixed data splits, and a reproducible evaluation report.
 
 ## Run the notebook
 
-1. Open the `standard_model_v3` notebook in Kaggle and attach [New Paddy Doctor](https://www.kaggle.com/datasets/dasa7753912/new-paddy-doctor-paddy-disease-classification) and the Paddy Doctor input used for the extra images. The notebook identifies that second input by its mount path. Verify the dataset owner and version before reproducing the run.
-2. Confirm both input paths point at a directory containing `paddy-disease-classification/train_images/<class>/`. The expected Kaggle mounts are `/kaggle/input/new-paddy-doctor-paddy-disease-classification` and `/kaggle/input/paddy-doctor`. For local Jupyter, change both input paths and the writable merge directory. Run each merge in a clean directory because an existing filename can cause a second copy with a prefix.
-3. Use a GPU for the configured 50-epoch run. For local Jupyter, the notebook imports TensorFlow, NumPy, pandas, Matplotlib, seaborn, and scikit-learn. Install them with `python -m pip install jupyterlab tensorflow numpy pandas matplotlib seaborn scikit-learn`.
-4. For a valid evaluation, assign images to fixed, disjoint splits before training. Keep duplicate and near-duplicate images in the same split, shuffle only the training split, and reserve the test split for the final report. See the audit below.
+1. Install Python 3.12 and the notebook dependencies in a virtual environment.
 
-## Training data and model outputs
+   ```sh
+   python -m pip install jupyterlab "tensorflow==2.21.*" "scikit-learn==1.8.*" numpy pillow matplotlib
+   jupyter lab
+   ```
 
-V3 copies lowercase JPG and PNG images from all primary training classes and adds secondary images for `dead_heart`, `downy_mildew`, and `hispa`. Keras assigns integer labels in alphabetical folder order. The saved notebook reports 19,131 primary images and 3,656 additions, yielding 22,787 images. Counts below come from the saved run.
+2. Put labeled JPEG or PNG images in one folder per class under `data/train_images`, or change `DATA_DIR` in the first code cell. For Kaggle, point it directly at the attached dataset’s `paddy-disease-classification/train_images` directory. Folder names provide class labels in alphabetical order. [New Paddy Doctor dataset](https://www.kaggle.com/datasets/dasa7753912/new-paddy-doctor-paddy-disease-classification)
 
-| Label index | Class | Primary | Added | Total |
-| ---: | --- | ---: | ---: | ---: |
-| 0 | bacterial_leaf_blight | 1,916 | 0 | 1,916 |
-| 1 | bacterial_leaf_streak | 1,900 | 0 | 1,900 |
-| 2 | bacterial_panicle_blight | 1,863 | 0 | 1,863 |
-| 3 | blast | 1,918 | 0 | 1,918 |
-| 4 | brown_spot | 1,930 | 0 | 1,930 |
-| 5 | dead_heart | 1,910 | 1,442 | 3,352 |
-| 6 | downy_mildew | 1,944 | 620 | 2,564 |
-| 7 | hispa | 1,942 | 1,594 | 3,536 |
-| 8 | normal | 1,872 | 0 | 1,872 |
-| 9 | tungro | 1,936 | 0 | 1,936 |
+   ```text
+   data/train_images/
+     bacterial_leaf_blight/
+       leaf-001.jpg
+     blast/
+       leaf-002.jpg
+     normal/
+       leaf-003.jpg
+   ```
 
-V3 takes RGB images at 224 × 224 pixels with values in the 0–255 range. The model rescales internally and applies random flips, rotation, and zoom during training. Its convolutional network uses Adam and sparse categorical cross-entropy with batches of 32. Each prediction returns ten softmax scores. The notebook's `predict(model, image_array)` helper returns the highest-scoring class and its score as a percentage.
+3. Run all cells. The ImageNet weights download on the first run. Set `BACKBONE_WEIGHTS = None` to train from scratch without the download, or `FINE_TUNE_EPOCHS = 0` to skip fine-tuning. The default run allows up to 12 classifier-head epochs and eight fine-tuning epochs. Early stopping uses validation loss.
 
-The V3 notebook takes approximately 80% of the merged labeled batches for training, 15% for validation, and the remainder for testing. Its saved run shows 570, 106, and 37 batches respectively. It never reads the separate `test_images` directory. The repository contains no raw datasets, trained checkpoints, or standalone inference service.
+## Training and test data
 
-## Review and test results
+- The notebook hashes decoded RGB pixels before splitting. It removes exact duplicates with the same label and stops if identical images have conflicting labels. Extra sources are opt-in via `EXTRA_DATA_DIRS`.
+- The default seeded split targets roughly 80% training, 10% validation, and 10% test with every class represented. Use at least three distinct images per class for the internal split; substantially more are needed to measure accuracy. Only the training dataset reshuffles and receives model-side augmentation.
+- Set `HOLDOUT_DIR` to use a separately collected test set with the same class folders. Development data then supplies training and validation. The notebook rejects overlap with the holdout based on exact pixels or declared group IDs.
+- Use `GROUP_CSV` for photos from the same plant, capture session, or known near-duplicate group. The CSV columns are `path,group`. Paths are relative to the CSV or absolute and must identify a file in the image inventory. Known groups stay in one split. Exact matching cannot detect crops or differently encoded images whose decoded pixels differ.
+- Leave the primary archive’s labeled `test_images` folder out of the evaluation. Its 10,407 entries match training entries on filename, class, CRC32, and byte size. All ten sampled pairs matched byte for byte. A matching secondary Paddy Doctor mirror also shares all 3,656 entries the older notebook selected for its three augmented classes by those metadata checks. Three sampled mirror/primary pairs matched byte for byte. [Matching secondary mirror](https://www.kaggle.com/datasets/imbikramsaha/paddy-doctor)
 
-Each branch's Python cells passed syntax checks after excluding notebook shell commands. With TensorFlow on CPU and 40 generated RGB images arranged across ten class folders, each model loaded its expected input shape, completed one training step with finite metrics, produced normalized ten-class scores, and returned a label and score for one image.
+## Model and outputs
 
-| Branch | RGB input | Saved accuracy | Saved report support |
-| --- | --- | ---: | ---: |
-| `main` | 120 × 120 | 81% | 1,952 |
-| `standard-model` | 224 × 224 | 82% | 1,952 |
-| `standard_model_v2` | 224 × 224 | 92% | 992 |
-| `standard_model_v3` | 224 × 224 | 95% | 1,184 |
+The notebook resizes RGB images to 160 × 160 with aspect-ratio-preserving padding. The model scales pixel values from 0–255 to −1–1 and uses global average pooling and a softmax head. Training weights are derived from class counts. The test set is evaluated only after the checkpoint is selected using validation loss.
 
-These scores are historical notebook outputs. The 50-epoch training runs, real-image predictions, and independent accuracy were not reproduced. Public Kaggle metadata confirmed the primary dataset listing and some archived image paths. Full image contents, labels, duplicates, and the exact secondary mirror were not independently verified.
+For ten classes, the model has 2.27 million parameters, about 95% fewer than the previous v3 model’s 42.76 million. In a local single-thread TensorFlow CPU benchmark, the median warm single-image forward pass took 8.1 ms with the revised model and 27.5 ms with v3. This excludes file loading and resizing, and hardware and batch size affect latency.
 
-### Evaluation issues
+Each completed run writes these files in its own directory under `runs/`:
 
-- Every branch independently iterates over a reshuffling dataset for its `take` and `skip` splits. A test of the shared function with 100 unique IDs and its default fractions found 10 train/validation overlaps, seven train/test overlaps, and two validation/test overlaps. Published notebook scores cannot establish performance on an independent holdout.
-- The earlier notebooks compare filenames in the external `train_images` and `test_images` directories and report at least one common name. The check does not establish whether those files contain the same image. Their final reports use the internal split of `train_images`. The `standard-model` branch also uses its internal test subset in validation during training.
-- The split helper reads the global dataset length and ignores the `test_split` argument. The cache, shuffle, and prefetch calls discard the returned datasets. V3's merge handles name collisions but can retain identical image content under different names.
-- Several example cells assume a batch contains at least 12 images. Pass the full class index list to scikit-learn when evaluating small subsets so classes without examples still appear in the report and confusion matrix.
+| File | Contents |
+| --- | --- |
+| `model.keras` | Selected model checkpoint |
+| `labels.json` | Class order, image configuration, seed, software versions, and selected training phase |
+| `splits.json` | File paths and class IDs for each split, with deduplication and class counts |
+| `evaluation.json` | Test accuracy, macro F1, per-class metrics, confusion matrix, and training history |
+| `confusion_matrix.png` | Labeled confusion matrix for the test set |
 
-## Attribution
+The final cell reloads the exported model and predicts one image. It returns the top class and a softmax score per class. Treat those scores as uncalibrated. Run artifacts include dataset file paths, so review the split manifest before sharing it.
 
-The notebooks and saved results come from [Nuwanthapasindu/paddy-disease-prediction-ai-model](https://github.com/Nuwanthapasindu/paddy-disease-prediction-ai-model). The source branch snapshots contain no license file. Consult the dataset pages for their usage terms.
+## Verification
+
+The old notebooks reshuffled their dataset independently for training, validation, and test iteration. Tests reproduced overlap between the splits. The historical v3 score of 95% cannot establish independent real-world accuracy.
+
+The revised notebook was tested on 100 real training-archive JPEGs across all ten classes, using 80 for training, ten for validation, and ten for internal testing. This small run checks the workflow. The duplicate rejection checks also passed, including rejection of sampled training copies as an external holdout.
+
+A separate CPU pilot used 986 archive photos across ten classes. It trained on 788 images, selected a checkpoint on 99 validation images, and scored 62 correct predictions out of 99 internal test images (62.6% accuracy and 0.613 macro F1). The pilot used up to six head epochs and four fine-tuning epochs. The sample came from one archive, so the result cannot establish field accuracy or an accuracy gain over v3. A full-data run with a separately collected labeled holdout is still needed.
