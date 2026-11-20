@@ -6,6 +6,8 @@ Train and evaluate a ten-class paddy leaf classifier in [model.ipynb](model.ipyn
 
 The [Android app](android/README.md) runs the notebook’s trained MobileNetV2 checkpoint on-device. Take a photo or choose one from the device to see the three highest-scoring classes. It supports Android 9 and later.
 
+[Download the Android APK](https://raw.githubusercontent.com/usmanalixy/Paddy-disease-prediction/android-download/Paddy-Disease-Prediction-debug.apk).
+
 ## Run the notebook
 
 1. Install Python 3.12 and the notebook dependencies in a virtual environment.
@@ -15,7 +17,7 @@ The [Android app](android/README.md) runs the notebook’s trained MobileNetV2 c
    jupyter lab
    ```
 
-2. Put labeled JPEG or PNG images in one folder per class under `data/train_images`, or change `DATA_DIR` in the first code cell. For Kaggle, point it directly at the attached dataset’s `paddy-disease-classification/train_images` directory. Folder names provide class labels in alphabetical order. [New Paddy Doctor dataset](https://www.kaggle.com/datasets/dasa7753912/new-paddy-doctor-paddy-disease-classification)
+2. Put labeled JPEG or PNG images in one folder per class under `data/train_images`, or change `DATA_DIR` in the first code cell. Folder names provide class labels in alphabetical order.
 
    ```text
    data/train_images/
@@ -28,6 +30,19 @@ The [Android app](android/README.md) runs the notebook’s trained MobileNetV2 c
    ```
 
 3. Run all cells. The ImageNet weights download on the first run. Set `BACKBONE_WEIGHTS = None` to train from scratch without the download, or `FINE_TUNE_EPOCHS = 0` to skip fine-tuning. The default run allows up to 12 classifier-head epochs and eight fine-tuning epochs. Early stopping uses validation loss.
+
+### Use the original Kaggle data
+
+Download or attach the [New Paddy Doctor archive](https://www.kaggle.com/datasets/dasa7753912/new-paddy-doctor-paddy-disease-classification) used by the original project. Set these in the notebook, using the actual location of the extracted `paddy-disease-classification` folder:
+
+```python
+DATA_DIR = Path("/path/to/paddy-disease-classification/train_images")
+KAGGLE_TRAIN_CSV = DATA_DIR.parent / "train.csv"
+```
+
+The CSV selects the 10,407 original labeled photos across ten classes. The mirror packages additional augmented files in `train_images`. The CSV filter excludes those files before splitting, so training can generate its own augmentations after the holdout is fixed. Leave `EXTRA_DATA_DIRS` empty for this run. [Original Paddy Doctor dataset and research](https://paddydoc.github.io/)
+
+When running from the full repository on a CPU, set `CACHE_FROZEN_BACKBONE = True` and `BATCH_SIZE = 64` to reproduce the faster training mode. This mode caches frozen MobileNetV2 activations for each training image and one horizontal flip, then fine-tunes the top layers. The validation and test images are used without augmentation.
 
 ## Training and test data
 
@@ -57,8 +72,10 @@ The final cell reloads the exported model and predicts one image. It returns the
 
 ## Verification
 
+The Android app now uses the checkpoint trained on the original Kaggle photos. After removing 74 exact duplicates from 10,407 originals, the run used 8,265 training photos, 1,034 validation photos, and 1,034 test photos. The checkpoint selected by validation loss got **970 of 1,034 correct (93.8%)** and **0.935 macro F1** on this internal test split. Photos from the same plant or capture session may still be related because the archive does not provide those group IDs. Accuracy on separately collected farm photos is unknown. [Per-class metrics and confusion matrix](reports/kaggle-originals-evaluation.json)
+
 The old notebooks reshuffled their dataset independently for training, validation, and test iteration. Tests reproduced overlap between the splits. The historical v3 score of 95% cannot establish independent real-world accuracy.
 
 The revised notebook was tested on 100 real training-archive JPEGs across all ten classes, using 80 for training, ten for validation, and ten for internal testing. This small run checks the workflow. The duplicate rejection checks also passed, including rejection of sampled training copies as an external holdout.
 
-A separate CPU pilot used 986 archive photos across ten classes. It trained on 788 images, selected a checkpoint on 99 validation images, and scored 62 correct predictions out of 99 internal test images (62.6% accuracy and 0.613 macro F1). The pilot used up to six head epochs and four fine-tuning epochs. The sample came from one archive, so the result cannot establish field accuracy or an accuracy gain over v3. A full-data run with a separately collected labeled holdout is still needed.
+The earlier CPU pilot used 986 archive photos across ten classes and scored 62 of 99 correct (62.6% accuracy and 0.613 macro F1) on its own internal test split. The pilot and full-data runs used different test splits.

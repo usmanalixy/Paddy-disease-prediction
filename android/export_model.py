@@ -69,6 +69,9 @@ def export(run_dir, assets_dir):
         "source_notebook": "model.ipynb",
         "training_phase": labels.get("selected_phase"),
     }
+    for key in ("dataset", "dataset_filter", "training_mode"):
+        if labels.get(key):
+            metadata[key] = labels[key]
     evaluation = run_dir / "evaluation.json"
     if evaluation.is_file():
         report = read_json(evaluation)["test_report"]
