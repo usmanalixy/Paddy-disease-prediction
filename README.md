@@ -4,7 +4,7 @@ Train and evaluate a ten-class paddy leaf classifier in [model.ipynb](model.ipyn
 
 ## Android app
 
-The [Android app](android/README.md) runs the notebook’s trained MobileNetV2 checkpoint on-device. Take a photo or choose one from the device to see the three highest-scoring classes. It supports Android 9 and later.
+The [Android app](android/README.md) runs the trained MobileNetV2 model on-device. Confirm that the photo shows one rice leaf close up to get a **Looks normal**, **Uncertain**, or **Possible disease** result. For field views and grain heads, the app asks for a leaf close-up. It supports Android 9 and later.
 
 [Download the Android APK](https://raw.githubusercontent.com/usmanalixy/Paddy-disease-prediction/android-download/Paddy-Disease-Prediction-debug.apk).
 
@@ -72,7 +72,9 @@ The final cell reloads the exported model and predicts one image. It returns the
 
 ## Verification
 
-The Android app now uses the checkpoint trained on the original Kaggle photos. After removing 74 exact duplicates from 10,407 originals, the run used 8,265 training photos, 1,034 validation photos, and 1,034 test photos. The checkpoint selected by validation loss got **970 of 1,034 correct (93.8%)** and **0.935 macro F1** on this internal test split. Photos from the same plant or capture session may still be related because the archive does not provide those group IDs. Accuracy on separately collected farm photos is unknown. [Per-class metrics and confusion matrix](reports/kaggle-originals-evaluation.json)
+The base checkpoint was trained on the original Kaggle photos. After removing 74 exact duplicates from 10,407 originals, the run used 8,265 training photos, 1,034 validation photos, and 1,034 test photos. Its ten-class top prediction got **970 of 1,034 correct (93.8%)** and **0.935 macro F1** on this internal test split. Photos from the same plant or capture session may still be related because the archive does not provide those group IDs. Accuracy on separately collected farm photos is unknown. [Per-class metrics and confusion matrix](reports/kaggle-originals-evaluation.json)
+
+The Android health screen fits a separate normal-versus-symptomatic output on the same training partition. On the held-out test split, it reduced disease alerts on normal photos from **16 of 175 to 7 of 175** compared with the base model's top prediction. It returned **Uncertain** on 8 normal and 53 symptomatic photos, and marked 10 symptomatic photos as **Looks normal**. [Health-screen evaluation](reports/kaggle-health-screen-evaluation.json)
 
 The old notebooks reshuffled their dataset independently for training, validation, and test iteration. Tests reproduced overlap between the splits. The historical v3 score of 95% cannot establish independent real-world accuracy.
 

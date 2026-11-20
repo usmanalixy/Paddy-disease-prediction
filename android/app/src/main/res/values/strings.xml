@@ -2,23 +2,31 @@
 <resources>
     <string name="app_name">Paddy Disease Prediction</string>
     <string name="app_title">Check a paddy photo</string>
-    <string name="app_subtitle">Photograph an affected leaf or plant part in good light. Keep the symptoms in focus.</string>
+    <string name="app_subtitle">Photograph one rice leaf close up in good light. Keep the leaf in focus and fill most of the frame.</string>
     <string name="photo_title">Paddy photo</string>
     <string name="photo_empty">Your photo will appear here</string>
     <string name="photo_preview">Selected paddy photo</string>
     <string name="take_photo">Take photo</string>
     <string name="choose_photo">Choose photo</string>
+    <string name="loading_photo">Opening photo…</string>
     <string name="analyzing">Analyzing photo…</string>
-    <string name="results_title">Top predictions</string>
-    <string name="result_row">%1$s · %2$s</string>
-    <string name="scores_note">The scores show how the model ranked its classes. Confirm possible disease with a local crop adviser.</string>
+    <string name="photo_check_prompt">What does this photo show?</string>
+    <string name="leaf_photo">One rice leaf close up</string>
+    <string name="other_photo">Field, grain heads, or other view</string>
+    <string name="closeup_needed">Leaf close-up needed</string>
+    <string name="closeup_detail">This model checks leaf close-ups. Fill the frame with one rice leaf in good light.</string>
+    <string name="result_normal">Looks normal</string>
+    <string name="result_normal_detail">The model found no clear signs among the conditions it checks. Check again if you notice symptoms.</string>
+    <string name="result_uncertain">Uncertain</string>
+    <string name="result_uncertain_detail">Take another close-up of one leaf in good light. If symptoms persist, ask a local crop adviser.</string>
+    <string name="result_disease">Possible disease</string>
+    <string name="result_disease_detail">%1$s. Confirm the result with a local crop adviser.</string>
     <string name="offline">Photos are processed on this device.</string>
-    <plurals name="evaluation_summary">
-        <item quantity="one">Model evaluation: %1$s accuracy on %2$d image (%3$s). Accuracy on farm photos is unknown.</item>
-        <item quantity="other">Model evaluation: %1$s accuracy on %2$d images (%3$s). Accuracy on farm photos is unknown.</item>
-    </plurals>
     <string name="evaluation_unknown">Accuracy on farm photos is unknown.</string>
-    <string name="evaluation_test_set">test set</string>
+    <plurals name="evaluation_summary">
+        <item quantity="one">Possible disease alerts on normal photos in testing: %1$d of %2$d photo. Accuracy on farm photos is unknown.</item>
+        <item quantity="other">Possible disease alerts on normal photos in testing: %1$d of %2$d photos. Accuracy on farm photos is unknown.</item>
+    </plurals>
     <string name="error_camera">The camera couldn’t open. Try choosing an existing photo.</string>
     <string name="error_picker">The photo picker couldn’t open on this device.</string>
     <string name="error_photo">This photo couldn’t be read. Try another JPEG or PNG.</string>

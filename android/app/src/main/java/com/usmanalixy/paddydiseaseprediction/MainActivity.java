@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.ColorSpace;
 import android.graphics.ImageDecoder;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -16,7 +15,6 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.core.content.FileProvider;
@@ -30,8 +28,6 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.NumberFormat;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,11 +37,14 @@ public final class MainActivity extends Activity {
     private static final int PICK_PHOTO = 1;
     private static final int CAPTURE_PHOTO = 2;
     private static final int MAX_PHOTO_EDGE = 2048;
+    private enum PhotoKind { PENDING, LEAF, OTHER }
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private PaddyClassifier classifier; // Created, used, and closed on worker.
     private JSONObject metadata;
     private Uri selectedPhoto;
+    private Bitmap selectedBitmap;
+    private PhotoKind photoKind = PhotoKind.PENDING;
     private File selectedCapture;
     private File pendingCapture;
     private boolean waitingForPhoto;
@@ -56,8 +55,10 @@ public final class MainActivity extends Activity {
     private ImageView preview;
     private View placeholder;
     private TextView status;
+    private View photoCheck;
     private View results;
-    private LinearLayout predictions;
+    private TextView resultTitle;
+    private TextView resultDetail;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,21 +80,28 @@ public final class MainActivity extends Activity {
         findViewById(R.id.photo_frame).setClipToOutline(true);
         placeholder = findViewById(R.id.placeholder);
         status = findViewById(R.id.status);
+        photoCheck = findViewById(R.id.photo_check);
         results = findViewById(R.id.results);
-        predictions = findViewById(R.id.predictions);
+        resultTitle = findViewById(R.id.result_title);
+        resultDetail = findViewById(R.id.result_detail);
         camera.setOnClickListener(view -> takePhoto());
         picker.setOnClickListener(view -> choosePhoto());
+        findViewById(R.id.leaf_photo).setOnClickListener(view -> {
+            photoKind = PhotoKind.LEAF;
+            analyzeConfirmedLeaf();
+        });
+        findViewById(R.id.other_photo).setOnClickListener(view -> {
+            photoKind = PhotoKind.OTHER;
+            showResult(R.string.closeup_needed, getString(R.string.closeup_detail));
+        });
 
         try {
             metadata = PaddyClassifier.readMetadata(getAssets());
-            JSONObject evaluation = metadata.optJSONObject("evaluation");
-            if (evaluation != null) {
-                TextView metrics = findViewById(R.id.evaluation);
-                int imageCount = evaluation.getInt("images");
-                metrics.setText(getResources().getQuantityString(R.plurals.evaluation_summary,
-                        imageCount, percent(evaluation.getDouble("accuracy")), imageCount,
-                        evaluation.optString("source", getString(R.string.evaluation_test_set))));
-            }
+            JSONObject evaluation = metadata.getJSONObject("health_screen").getJSONObject("test");
+            TextView metrics = findViewById(R.id.evaluation);
+            int normalCount = evaluation.getInt("normal_images");
+            metrics.setText(getResources().getQuantityString(R.plurals.evaluation_summary, normalCount,
+                    evaluation.getInt("normal_false_alarms"), normalCount));
         } catch (IOException | JSONException error) {
             Log.e(TAG, "Cannot load model metadata", error);
             showStatus(R.string.error_model, true);
@@ -103,10 +111,11 @@ public final class MainActivity extends Activity {
             pendingCapture = savedCapture(savedInstanceState.getString("pending_capture"));
             selectedCapture = savedCapture(savedInstanceState.getString("selected_capture"));
             waitingForPhoto = savedInstanceState.getBoolean("waiting_for_photo");
+            photoKind = PhotoKind.valueOf(savedInstanceState.getString("photo_kind", PhotoKind.PENDING.name()));
             String photo = savedInstanceState.getString("selected_photo");
             if (photo != null) {
                 selectedPhoto = Uri.parse(photo);
-                if (!waitingForPhoto) analyze(selectedPhoto);
+                if (!waitingForPhoto) loadPhoto(selectedPhoto);
             }
         }
     }
@@ -118,6 +127,7 @@ public final class MainActivity extends Activity {
         if (selectedCapture != null) state.putString("selected_capture", selectedCapture.getName());
         if (pendingCapture != null) state.putString("pending_capture", pendingCapture.getName());
         state.putBoolean("waiting_for_photo", waitingForPhoto);
+        state.putString("photo_kind", photoKind.name());
     }
 
     @Override
@@ -210,14 +220,15 @@ public final class MainActivity extends Activity {
             return;
         }
         if (selectedPhoto != null && preview.getVisibility() != View.VISIBLE) {
-            analyze(selectedPhoto);
+            loadPhoto(selectedPhoto);
         }
     }
 
     private void replacePhoto(Uri uri, File capture) {
         discardCapture(selectedCapture);
         selectedCapture = capture;
-        analyze(uri);
+        photoKind = PhotoKind.PENDING;
+        loadPhoto(uri);
     }
 
     private void discardCapture(File capture) {
@@ -226,15 +237,17 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void analyze(Uri photo) {
+    private void loadPhoto(Uri photo) {
         if (busy) return;
         selectedPhoto = photo;
+        selectedBitmap = null;
         setBusy(true);
         results.setVisibility(View.GONE);
+        photoCheck.setVisibility(View.GONE);
         preview.setImageDrawable(null);
         preview.setVisibility(View.GONE);
         placeholder.setVisibility(View.VISIBLE);
-        showStatus(R.string.analyzing, false);
+        showStatus(R.string.loading_photo, false);
 
         worker.execute(() -> {
             Bitmap bitmap;
@@ -252,17 +265,37 @@ public final class MainActivity extends Activity {
                 runOnUiThread(() -> showPhotoError());
                 return;
             }
-            runOnUiThread(() -> {
-                if (isDestroyed() || isFinishing()) return;
-                preview.setImageBitmap(bitmap);
-                preview.setVisibility(View.VISIBLE);
-                placeholder.setVisibility(View.GONE);
-            });
+            runOnUiThread(() -> previewPhoto(bitmap));
+        });
+    }
+
+    private void previewPhoto(Bitmap bitmap) {
+        if (isDestroyed() || isFinishing()) return;
+        selectedBitmap = bitmap;
+        preview.setImageBitmap(bitmap);
+        preview.setVisibility(View.VISIBLE);
+        placeholder.setVisibility(View.GONE);
+        status.setVisibility(View.GONE);
+        setBusy(false);
+        switch (photoKind) {
+            case PENDING -> photoCheck.setVisibility(View.VISIBLE);
+            case LEAF -> analyzeConfirmedLeaf();
+            case OTHER -> showResult(R.string.closeup_needed, getString(R.string.closeup_detail));
+        }
+    }
+
+    private void analyzeConfirmedLeaf() {
+        if (busy || selectedBitmap == null || photoKind != PhotoKind.LEAF) return;
+        Bitmap bitmap = selectedBitmap;
+        setBusy(true);
+        photoCheck.setVisibility(View.GONE);
+        showStatus(R.string.analyzing, false);
+        worker.execute(() -> {
             try {
                 if (metadata == null) throw new IOException("Model metadata is unavailable.");
                 if (classifier == null) classifier = new PaddyClassifier(getAssets(), metadata);
-                List<PaddyClassifier.Prediction> top = classifier.predict(bitmap);
-                runOnUiThread(() -> showPredictions(top));
+                PaddyClassifier.Prediction prediction = classifier.predict(bitmap);
+                runOnUiThread(() -> showPrediction(prediction));
             } catch (IOException | JSONException | RuntimeException | LinkageError error) {
                 Log.e(TAG, "Classifier failed", error);
                 runOnUiThread(() -> {
@@ -283,20 +316,20 @@ public final class MainActivity extends Activity {
         showStatus(R.string.error_photo, true);
     }
 
-    private void showPredictions(List<PaddyClassifier.Prediction> top) {
-        if (isDestroyed() || isFinishing()) return;
-        predictions.removeAllViews();
-        for (int i = 0; i < top.size(); i++) {
-            PaddyClassifier.Prediction prediction = top.get(i);
-            TextView row = new TextView(this);
-            row.setText(getString(R.string.result_row, displayLabel(prediction.label()),
-                    percent(prediction.score())));
-            row.setTextSize(i == 0 ? 23 : 16);
-            row.setTextColor(getColor(i == 0 ? R.color.pine : R.color.ink));
-            row.setPadding(0, Math.round(8 * getResources().getDisplayMetrics().density), 0, 0);
-            if (i == 0) row.setTypeface(row.getTypeface(), Typeface.BOLD);
-            predictions.addView(row);
+    private void showPrediction(PaddyClassifier.Prediction prediction) {
+        switch (prediction.outcome()) {
+            case NORMAL -> showResult(R.string.result_normal, getString(R.string.result_normal_detail));
+            case UNCERTAIN -> showResult(R.string.result_uncertain, getString(R.string.result_uncertain_detail));
+            case POSSIBLE_DISEASE -> showResult(R.string.result_disease,
+                    getString(R.string.result_disease_detail, displayLabel(prediction.diseaseLabel())));
         }
+    }
+
+    private void showResult(int title, String detail) {
+        if (isDestroyed() || isFinishing()) return;
+        resultTitle.setText(title);
+        resultDetail.setText(detail);
+        photoCheck.setVisibility(View.GONE);
         results.setVisibility(View.VISIBLE);
         status.setVisibility(View.GONE);
         setBusy(false);
@@ -312,12 +345,6 @@ public final class MainActivity extends Activity {
         status.setText(message);
         status.setTextColor(getColor(error ? R.color.error : R.color.muted));
         status.setVisibility(View.VISIBLE);
-    }
-
-    private static String percent(double value) {
-        NumberFormat percent = NumberFormat.getPercentInstance();
-        percent.setMaximumFractionDigits(1);
-        return percent.format(value);
     }
 
     private static String displayLabel(String key) {
