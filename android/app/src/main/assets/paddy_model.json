@@ -19,10 +19,57 @@
     0,
     255
   ],
-  "checkpoint_sha256": "507111c563bdb254bbd9dab1d82c27c4cf65074f624faecf92270a057614242b",
-  "model_sha256": "8aa940b5c34f6f794bec73d295ce985a5950a6f72f5cc13ed0fbd2723bf2d3a5",
+  "checkpoint_sha256": "2970c153bb96f04ee4a475a8a6549b9743617787d10d27e5c473fff60b7bc5d6",
+  "model_sha256": "13b91baab468e5fac6ed63b22c8d54990167cf7e1dee1e28c0de3d81bb4eaca7",
   "source_notebook": "model.ipynb",
   "training_phase": "fine_tune",
+  "health_screen": {
+    "base_checkpoint_sha256": "507111c563bdb254bbd9dab1d82c27c4cf65074f624faecf92270a057614242b",
+    "normal_class": "normal",
+    "fit": {
+      "training_images": 8265,
+      "regularization_c": 0.3
+    },
+    "policy": {
+      "normal_below": 0.2986609935760498,
+      "disease_above": 0.9113472104072571,
+      "min_disease_class_score": 0.6
+    },
+    "validation": {
+      "normal_images": 175,
+      "symptomatic_images": 859,
+      "normal_correct": 165,
+      "normal_false_alarms": 2,
+      "normal_uncertain": 8,
+      "symptomatic_flagged": 790,
+      "symptomatic_marked_normal": 8,
+      "symptomatic_uncertain": 61,
+      "symptomatic_correct_label": 757
+    },
+    "test_source": "internal holdout",
+    "test_baseline": {
+      "normal_images": 175,
+      "symptomatic_images": 859,
+      "normal_correct": 159,
+      "normal_false_alarms": 16,
+      "normal_uncertain": 0,
+      "symptomatic_flagged": 846,
+      "symptomatic_marked_normal": 13,
+      "symptomatic_uncertain": 0,
+      "symptomatic_correct_label": 811
+    },
+    "test": {
+      "normal_images": 175,
+      "symptomatic_images": 859,
+      "normal_correct": 160,
+      "normal_false_alarms": 7,
+      "normal_uncertain": 8,
+      "symptomatic_flagged": 796,
+      "symptomatic_marked_normal": 10,
+      "symptomatic_uncertain": 53,
+      "symptomatic_correct_label": 772
+    }
+  },
   "dataset": "dasa7753912/new-paddy-doctor-paddy-disease-classification",
   "dataset_filter": "train.csv original photos only",
   "training_mode": "cached MobileNetV2 with training-only horizontal flips",

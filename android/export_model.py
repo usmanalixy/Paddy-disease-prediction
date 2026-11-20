@@ -14,15 +14,22 @@ def read_json(path):
 
 
 def export(run_dir, assets_dir):
-    checkpoint = run_dir / "model.keras"
+    checkpoint = run_dir / "health_model.keras"
     labels = read_json(run_dir / "labels.json")
+    screen = read_json(run_dir / "health_screen.json")
+    with (run_dir / "model.keras").open("rb") as stream:
+        base_sha256 = hashlib.file_digest(stream, "sha256").hexdigest()
+    if base_sha256 != screen["base_checkpoint_sha256"]:
+        raise ValueError("The health screen was fitted for a different checkpoint.")
     height, width = labels["image_size"]
     classes = labels["class_names"]
-    if not classes or len(set(classes)) != len(classes) or labels["pixel_range"] != [0, 255]:
+    if (screen["normal_class"] not in classes
+            or len(set(classes)) != len(classes) or labels["pixel_range"] != [0, 255]):
         raise ValueError("Expected unique classes and float RGB values in the range 0–255.")
+    outputs = len(classes) + 1  # Disease/normal class scores, then the binary symptom score.
 
     model = tf.keras.models.load_model(checkpoint, compile=False)
-    if model.input_shape[1:] != (height, width, 3) or model.output_shape[-1] != len(classes):
+    if model.input_shape[1:] != (height, width, 3) or model.output_shape[-1] != outputs:
         raise ValueError("The checkpoint dimensions do not agree with labels.json.")
 
     @tf.function(input_signature=[tf.TensorSpec((1, height, width, 3), tf.float32, name="rgb")])
@@ -41,7 +48,7 @@ def export(run_dir, assets_dir):
     output_info = interpreter.get_output_details()[0]
     if (
         tuple(input_info["shape"]) != (1, height, width, 3)
-        or tuple(output_info["shape"]) != (1, len(classes))
+        or tuple(output_info["shape"]) != (1, outputs)
         or input_info["dtype"] != np.float32
         or output_info["dtype"] != np.float32
     ):
@@ -68,6 +75,7 @@ def export(run_dir, assets_dir):
         "model_sha256": hashlib.sha256(converted).hexdigest(),
         "source_notebook": "model.ipynb",
         "training_phase": labels.get("selected_phase"),
+        "health_screen": screen,
     }
     for key in ("dataset", "dataset_filter", "training_mode"):
         if labels.get(key):
@@ -92,7 +100,7 @@ def export(run_dir, assets_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("run_dir", type=Path, help="Notebook run containing model.keras and labels.json")
+    parser.add_argument("run_dir", type=Path, help="Notebook run after fitting the health screen")
     parser.add_argument(
         "--assets-dir",
         type=Path,

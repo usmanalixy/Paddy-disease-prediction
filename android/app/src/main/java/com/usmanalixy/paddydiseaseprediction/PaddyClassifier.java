@@ -18,17 +18,15 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
 
 final class PaddyClassifier implements AutoCloseable {
-    record Prediction(String label, float score) {}
+    record Prediction(HealthDecision.Outcome outcome, String diseaseLabel) {}
 
     private final Interpreter model;
     private final ByteBuffer input;
     private final String[] labels;
+    private final HealthDecision healthDecision;
     private final int width;
     private final int height;
 
@@ -50,6 +48,13 @@ final class PaddyClassifier implements AutoCloseable {
         for (int i = 0; i < labels.length; i++) {
             labels[i] = classes.getString(i);
         }
+        JSONObject screen = metadata.getJSONObject("health_screen");
+        JSONObject policy = screen.getJSONObject("policy");
+        healthDecision = new HealthDecision(
+                Arrays.asList(labels).indexOf(screen.getString("normal_class")),
+                (float) policy.getDouble("normal_below"),
+                (float) policy.getDouble("disease_above"),
+                (float) policy.getDouble("min_disease_class_score"));
         JSONArray imageSize = metadata.getJSONArray("image_size");
         height = imageSize.getInt(0);
         width = imageSize.getInt(1);
@@ -67,7 +72,7 @@ final class PaddyClassifier implements AutoCloseable {
             Tensor modelOutput = model.getOutputTensor(0);
             if (modelInput.dataType() != DataType.FLOAT32 || modelOutput.dataType() != DataType.FLOAT32
                     || !Arrays.equals(modelInput.shape(), new int[] {1, height, width, 3})
-                    || !Arrays.equals(modelOutput.shape(), new int[] {1, labels.length})) {
+                    || !Arrays.equals(modelOutput.shape(), new int[] {1, labels.length + 1})) {
                 throw new IOException("Model tensors do not match the bundled metadata.");
             }
         } catch (IOException | RuntimeException error) {
@@ -76,25 +81,18 @@ final class PaddyClassifier implements AutoCloseable {
         }
     }
 
-    List<Prediction> predict(Bitmap photo) {
+    Prediction predict(Bitmap photo) {
         int sourceWidth = photo.getWidth();
         int sourceHeight = photo.getHeight();
         int[] pixels = new int[sourceWidth * sourceHeight];
         photo.getPixels(pixels, 0, sourceWidth, 0, 0, sourceWidth, sourceHeight);
         PhotoTensor.writeRgb(pixels, sourceWidth, sourceHeight, width, height, input);
 
-        float[][] output = new float[1][labels.length];
+        float[][] output = new float[1][labels.length + 1];
         model.run(input, output);
-        List<Prediction> scores = new ArrayList<>(labels.length);
-        for (int i = 0; i < labels.length; i++) {
-            float score = output[0][i];
-            if (!Float.isFinite(score) || score < 0 || score > 1) {
-                throw new IllegalStateException("Invalid classifier output.");
-            }
-            scores.add(new Prediction(labels[i], score));
-        }
-        scores.sort(Comparator.comparingDouble(Prediction::score).reversed());
-        return scores.subList(0, Math.min(3, scores.size()));
+        HealthDecision.Result result = healthDecision.decide(output[0]);
+        String disease = result.diseaseIndex() < 0 ? null : labels[result.diseaseIndex()];
+        return new Prediction(result.outcome(), disease);
     }
 
     @Override
